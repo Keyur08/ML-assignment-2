@@ -9,9 +9,8 @@ from sklearn.metrics import (
     classification_report
 )
 
-st.set_page_config(page_title="ML Assignment 2", layout="wide")
+st.set_page_config(page_title="Loan Default Predictor", layout="wide")
 
-st.title("Machine Learning Assignment 2")
 st.subheader("Classification Models Performance Evaluation")
 
 @st.cache_resource
