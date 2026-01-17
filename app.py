@@ -94,6 +94,10 @@ def main():
 
                     X_test_processed = preprocessing_preprocessor.transform(test_df_copy)
 
+                    if selected_model == "Naive Bayes" and hasattr(X_test_processed, "toarray"):
+                        X_test_processed = X_test_processed.toarray()
+
+
                     selected_clf = models_dict[selected_model]
                     predictions = selected_clf.predict(X_test_processed)
 
