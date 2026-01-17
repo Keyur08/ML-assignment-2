@@ -76,9 +76,31 @@ class LoanDataHandler:
         return X_train_processed, X_test_processed, y_train, y_test, self.preprocessor
 
 
+    def create_sample_test_data(self, sample_size=5000, random_state=42):
+        """Create a smaller test dataset for Streamlit deployment"""
+        X, y = self.prepare_features()
+        
+        # Stratified sampling to maintain class distribution
+        from sklearn.model_selection import train_test_split
+        
+        _, X_sample, _, y_sample = train_test_split(
+            X, y, 
+            test_size=sample_size, 
+            random_state=random_state, 
+            stratify=y
+        )
+        
+        # Add target back for test data
+        test_sample = X_sample.copy()
+        test_sample['loan_default'] = y_sample
+        
+        return test_sample
+
 def load_and_prepare(filepath='data/train.csv'):
     processor = LoanDataHandler(filepath)
 
     X_train, X_test, y_train, y_test, preprocessor = processor.split_and_transform()
 
     return X_train, X_test, y_train, y_test, preprocessor
+
+

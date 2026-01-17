@@ -2,183 +2,220 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-import plotly.graph_objects as go
-from sklearn.metrics import confusion_matrix, classification_report
-import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    roc_auc_score, matthews_corrcoef, confusion_matrix,
+    classification_report
+)
 
-st.set_page_config(page_title="Loan Default Predictor", layout="wide", page_icon="🏦")
+st.set_page_config(page_title="ML Assignment 2", layout="wide")
 
-st.markdown("""
-    <style>
-    .main-header {
-        font-size: 2.5rem;
-        color: #1f77b4;
-        text-align: center;
-        font-weight: 700;
-        margin-bottom: 1rem;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-    }
-    </style>
-""", unsafe_allow_html=True)
+st.title("Machine Learning Assignment 2")
+st.subheader("Classification Models Performance Evaluation")
 
 @st.cache_resource
-def load_trained_models():
-    model_paths = {
-        'Logistic Regression': 'model/saved_models/logistic_regression.pkl',
-        'Decision Tree': 'model/saved_models/decision_tree.pkl',
-        'K-Nearest Neighbors': 'model/saved_models/knn.pkl',
-        'Naive Bayes': 'model/saved_models/naive_bayes.pkl',
-        'Random Forest': 'model/saved_models/random_forest.pkl',
-        'XGBoost': 'model/saved_models/xgboost.pkl'
-    }
-
-    loaded_models = {}
-    for name, path in model_paths.items():
-        loaded_models[name] = joblib.load(path)
-
+def load_resources():
+    models = {}
+    model_names = [
+        'logistic_regression', 'decision_tree', 'knn',
+        'naive_bayes', 'random_forest', 'xgboost'
+    ]
+    
+    for name in model_names:
+        models[name] = joblib.load(f'model/saved_models/{name}.pkl')
+    
     preprocessor = joblib.load('model/saved_models/preprocessor.pkl')
-    return loaded_models, preprocessor
+    metrics = pd.read_csv('model/saved_models/metrics_report.csv', index_col=0)
+    
+    return models, preprocessor, metrics
 
-def generate_confusion_heatmap(cm, model_name):
-    fig, ax = plt.subplots(figsize=(6, 4))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
-    ax.set_title(f'{model_name} - Confusion Matrix')
-    ax.set_ylabel('Actual')
-    ax.set_xlabel('Predicted')
-    return fig
+try:
+    models_dict, preprocessor, metrics_df = load_resources()
+    resources_loaded = True
+except Exception as e:
+    st.error(f"Error loading models: {str(e)}")
+    resources_loaded = False
 
-def main():
-    st.markdown('<p class="main-header"> Vehicle Loan Default Prediction System</p>', unsafe_allow_html=True)
-
-    models_dict, preprocessing_preprocessor = load_trained_models()
-
-    st.sidebar.title(" Configuration Panel")
-    selected_model = st.sidebar.selectbox(
-        "Choose Classification Model:",
-        list(models_dict.keys()),
-        index=0
-    )
-
-    st.sidebar.markdown("---")
-
-    tab1, tab2 = st.tabs([" Model Evaluation", " Performance Metrics"])
-
+if resources_loaded:
+    with st.sidebar:
+        st.header("Settings")
+        
+        model_options = {
+            'Logistic Regression': 'logistic_regression',
+            'Decision Tree': 'decision_tree',
+            'K-Nearest Neighbors': 'knn',
+            'Naive Bayes': 'naive_bayes',
+            'Random Forest': 'random_forest',
+            'XGBoost': 'xgboost'
+        }
+        
+        selected_model_name = st.selectbox(
+            "Select Model",
+            list(model_options.keys())
+        )
+        model_key = model_options[selected_model_name]
+        selected_model = models_dict[model_key]
+        
+        # Data source
+        data_source = st.radio(
+            "Test Data Source",
+            ["Upload CSV"]
+        )
+    
+    tab1, tab2 = st.tabs(["Model Testing", "Performance Comparison"])
+    
     with tab1:
-        st.subheader("Upload Test Dataset")
-        uploaded_csv = st.file_uploader("Choose CSV file", type=['csv'], key="csv_uploader")
-
-        if uploaded_csv is not None:
-            test_df = pd.read_csv(uploaded_csv)
-            st.success(f" Dataset loaded: {test_df.shape[0]} rows, {test_df.shape[1]} columns")
-
-            with st.expander(" View Dataset Preview"):
-                st.dataframe(test_df.head(10))
-
-            if st.button(" Run Prediction Analysis", type="primary"):
-                with st.spinner("Processing predictions..."):
-
-                    if 'loan_default' in test_df.columns:
-                        y_test = test_df['loan_default']
-                        test_df_copy = test_df.drop(columns=['loan_default'])
+        st.header("Model Testing and Evaluation")
+        
+        test_data = None
+        
+        if data_source == "Upload CSV":
+            uploaded_file = st.file_uploader("Upload test CSV file", type=['csv'])
+            if uploaded_file is not None:
+                test_data = pd.read_csv(uploaded_file)
+                if len(test_data) > 5000:
+                    test_data = test_data.head(5000)
+                    st.warning("Using first 5000 rows only.")
+        
+        
+        if test_data is not None:
+            st.write(f"Test data loaded: {test_data.shape[0]} rows, {test_data.shape[1]} columns")
+            
+            if st.button("Run Evaluation"):
+                with st.spinner("Evaluating model..."):
+                    if 'loan_default' in test_data.columns:
+                        y_true = test_data['loan_default']
+                        X_test = test_data.drop(columns=['loan_default'])
                         has_labels = True
                     else:
-                        test_df_copy = test_df.copy()
+                        X_test = test_data
+                        y_true = None
                         has_labels = False
-
-                    X_test_processed = preprocessing_preprocessor.transform(test_df_copy)
-
-                    if selected_model == "Naive Bayes" and hasattr(X_test_processed, "toarray"):
-                        X_test_processed = X_test_processed.toarray()
-
-
-                    selected_clf = models_dict[selected_model]
-                    predictions = selected_clf.predict(X_test_processed)
-
-                    if hasattr(selected_clf, 'predict_proba'):
-                        pred_probs = selected_clf.predict_proba(X_test_processed)[:, 1]
+                    
+                    X_processed = preprocessor.transform(X_test)
+                    
+                    if selected_model_name == "Naive Bayes" and hasattr(X_processed, "toarray"):
+                        X_processed = X_processed.toarray()
+                    
+                    # Predict
+                    y_pred = selected_model.predict(X_processed)
+                    
+                    # Get probabilities if available
+                    if hasattr(selected_model, 'predict_proba'):
+                        y_proba = selected_model.predict_proba(X_processed)[:, 1]
                     else:
-                        pred_probs = None
-
+                        y_proba = None
+                    
+                    # Display results
+                    st.subheader(f"Results for {selected_model_name}")
+                    
+                    # Basic counts
                     col1, col2, col3 = st.columns(3)
-
                     with col1:
-                        default_count = np.sum(predictions == 1)
-                        st.metric(" Predicted Defaults", default_count)
-
+                        st.metric("Total Samples", len(y_pred))
                     with col2:
-                        safe_count = np.sum(predictions == 0)
-                        st.metric(" Predicted Safe", safe_count)
-
+                        st.metric("Predicted Default", sum(y_pred == 1))
                     with col3:
-                        default_rate = (default_count / len(predictions)) * 100
-                        st.metric(" Default Rate", f"{default_rate:.2f}%")
-
-                    if has_labels:
-                        st.markdown("---")
-                        st.subheader(" Model Performance Metrics")
-
-                        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-
-                        col1, col2, col3, col4 = st.columns(4)
-
-                        with col1:
-                            acc = accuracy_score(y_test, predictions)
-                            st.metric("Accuracy", f"{acc:.4f}")
-
-                        with col2:
-                            prec = precision_score(y_test, predictions, zero_division=0)
-                            st.metric("Precision", f"{prec:.4f}")
-
-                        with col3:
-                            rec = recall_score(y_test, predictions, zero_division=0)
-                            st.metric("Recall", f"{rec:.4f}")
-
-                        with col4:
-                            f1 = f1_score(y_test, predictions, zero_division=0)
-                            st.metric("F1-Score", f"{f1:.4f}")
-
-                        st.markdown("---")
-                        st.subheader(" Confusion Matrix Analysis")
-
-                        cm = confusion_matrix(y_test, predictions)
-                        fig = generate_confusion_heatmap(cm, selected_model)
+                        st.metric("Predicted Non-Default", sum(y_pred == 0))
+                    
+                    if has_labels and y_true is not None:
+                        st.subheader("Evaluation Metrics")
+                        
+                        # Calculate metrics
+                        accuracy = accuracy_score(y_true, y_pred)
+                        precision = precision_score(y_true, y_pred, zero_division=0)
+                        recall = recall_score(y_true, y_pred, zero_division=0)
+                        f1 = f1_score(y_true, y_pred, zero_division=0)
+                        mcc = matthews_corrcoef(y_true, y_pred)
+                        
+                        if y_proba is not None:
+                            auc = roc_auc_score(y_true, y_proba)
+                        else:
+                            auc = "N/A"
+                        
+                        # Display metrics
+                        metrics_cols = st.columns(6)
+                        metrics_data = [
+                            ("Accuracy", f"{accuracy:.4f}"),
+                            ("AUC", f"{auc:.4f}" if auc != "N/A" else auc),
+                            ("Precision", f"{precision:.4f}"),
+                            ("Recall", f"{recall:.4f}"),
+                            ("F1-Score", f"{f1:.4f}"),
+                            ("MCC", f"{mcc:.4f}")
+                        ]
+                        
+                        for col, (name, value) in zip(metrics_cols, metrics_data):
+                            with col:
+                                st.metric(name, value)
+                        
+                        # Confusion Matrix
+                        st.subheader("Confusion Matrix")
+                        cm = confusion_matrix(y_true, y_pred)
+                        fig, ax = plt.subplots(figsize=(6, 4))
+                        ax.matshow(cm, cmap=plt.cm.Blues, alpha=0.8)
+                        for i in range(cm.shape[0]):
+                            for j in range(cm.shape[1]):
+                                ax.text(j, i, str(cm[i, j]), ha='center', va='center')
+                        ax.set_xlabel('Predicted')
+                        ax.set_ylabel('Actual')
+                        ax.set_xticks([0, 1])
+                        ax.set_yticks([0, 1])
+                        ax.set_xticklabels(['Non-Default', 'Default'])
+                        ax.set_yticklabels(['Non-Default', 'Default'])
                         st.pyplot(fig)
-
-                        with st.expander(" Detailed Classification Report"):
-                            report = classification_report(y_test, predictions, output_dict=True)
-                            st.dataframe(pd.DataFrame(report).transpose())
-
+                        
+                        # Classification Report
+                        st.subheader("Classification Report")
+                        report = classification_report(y_true, y_pred, output_dict=True)
+                        report_df = pd.DataFrame(report).transpose()
+                        st.dataframe(report_df)
+    
     with tab2:
-        st.subheader(" Comparative Model Performance")
+        st.header("Model Performance Comparison")
+        
+        display_df = metrics_df.copy()
+        display_df.index = [
+            'Logistic Regression', 'Decision Tree', 'K-Nearest Neighbors',
+            'Naive Bayes', 'Random Forest', 'XGBoost'
+        ]
+        
+        display_df = display_df.rename(columns={
+            'accuracy': 'Accuracy',
+            'auc': 'AUC',
+            'precision': 'Precision', 
+            'recall': 'Recall',
+            'f1': 'F1-Score',
+            'mcc': 'MCC'
+        })
+        
+        observations = {
+            'Logistic Regression': 'Baseline model with reasonable performance.',
+            'Decision Tree': 'Interpretable but prone to overfitting.',
+            'K-Nearest Neighbors': 'Sensitive to data scaling and dimensionality.',
+            'Naive Bayes': 'Fast but assumes feature independence.',
+            'Random Forest': 'Robust ensemble method with good performance.',
+            'XGBoost': 'Advanced boosting algorithm with best overall metrics.'
+        }
+        
+        display_df['Observation'] = [observations[model] for model in display_df.index]
+        
+        cols = ['Observation'] + [col for col in display_df.columns if col != 'Observation']
+        display_df = display_df[cols]
+        
+        for col in ['Accuracy', 'AUC', 'Precision', 'Recall', 'F1-Score', 'MCC']:
+            display_df[col] = display_df[col].apply(lambda x: f"{x:.4f}")
+        
+        st.dataframe(display_df, use_container_width=True)
 
-        metrics_df = pd.read_csv('model/saved_models/metrics_report.csv', index_col=0)
-        st.dataframe(metrics_df.style.highlight_max(axis=0, color='lightgreen'))
-
-        st.markdown("---")
-        st.subheader(" Metrics Visualization")
-
-        metric_choice = st.selectbox(
-            "Select metric to visualize:",
-            ['accuracy', 'auc', 'precision', 'recall', 'f1', 'mcc']
-        )
-
-        fig = go.Figure(data=[
-            go.Bar(x=metrics_df.index, y=metrics_df[metric_choice],
-                   marker_color='indianred')
-        ])
-        fig.update_layout(
-            title=f'{metric_choice.upper()} Comparison Across Models',
-            xaxis_title='Model',
-            yaxis_title=metric_choice.upper()
-        )
-        st.plotly_chart(fig, width="stretch")
-
-if __name__ == "__main__":
-    main()
+else:
+    st.warning("Please ensure all model files are available in the model/saved_models directory.")
+    st.write("Required files:")
+    st.write("- logistic_regression.pkl")
+    st.write("- decision_tree.pkl")
+    st.write("- knn.pkl")
+    st.write("- naive_bayes.pkl")
+    st.write("- random_forest.pkl")
+    st.write("- xgboost.pkl")
+    st.write("- preprocessor.pkl")
+    st.write("- metrics_report.csv")
