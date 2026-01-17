@@ -4,7 +4,7 @@ Financial institutions incur significant losses due to vehicle loan defaults, pa
 
 ---
 
-## 2. Dataset Description 
+## 2. Dataset Description
 
 - **Dataset Type:** Vehicle Loan Default Prediction
 - **Source:** Public dataset (Kaggle)
@@ -26,7 +26,7 @@ The dataset contains:
 
 ---
 
-## 3. Machine Learning Models and Evaluation Metrics 
+## 3. Machine Learning Models and Evaluation Metrics
 
 The following six classification models were implemented on the same dataset:
 
@@ -61,7 +61,7 @@ Each model was evaluated using:
 
 ---
 
-## 4. Observations on Model Performance  
+## 4. Observations on Model Performance
 
 | ML Model            | Observation                                                                                             |
 | ------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -74,7 +74,7 @@ Each model was evaluated using:
 
 ---
 
-## 5. Streamlit Web Application  
+## 5. Streamlit Web Application
 
 An interactive Streamlit application was developed and deployed using **Streamlit Community Cloud** with the following features:
 
@@ -84,3 +84,5 @@ An interactive Streamlit application was developed and deployed using **Streamli
 - Confusion matrix / classification report
 
 **Live Streamlit App Link:**
+
+    https://loan-default-predictor-keyur.streamlit.app/
