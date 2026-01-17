@@ -14,9 +14,6 @@ class LoanDataHandler:
         self.preprocessor = None
 
     def drop_unnecessary(self):
-        """
-        Drop ID-like columns and constant columns
-        """
         drop_cols = []
         for col in self.raw_data.columns:
             if 'ID' in col.upper() or self.raw_data[col].nunique() <= 1:
@@ -48,9 +45,6 @@ class LoanDataHandler:
 
 
     def prepare_features(self):
-        """
-        Cleans data, separates target, builds preprocessing pipeline
-        """
         self.drop_unnecessary()
 
         target_col = 'loan_default'
@@ -65,10 +59,6 @@ class LoanDataHandler:
         return X, y
 
     def split_and_transform(self, test_fraction=0.2, random_seed=42):
-        """
-        Splits data FIRST, then fits preprocessing ONLY on training data
-        (prevents data leakage)
-        """
         X, y = self.prepare_features()
 
         X_train, X_test, y_train, y_test = train_test_split(
@@ -87,9 +77,6 @@ class LoanDataHandler:
 
 
 def load_and_prepare(filepath='data/train.csv'):
-    """
-    Public helper used by train_models.py
-    """
     processor = LoanDataHandler(filepath)
 
     X_train, X_test, y_train, y_test, preprocessor = processor.split_and_transform()

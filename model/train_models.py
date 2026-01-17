@@ -22,17 +22,8 @@ import xgboost as xgb
 
 from data_preprocessing import load_and_prepare
 
-
-# -------------------------------------------------
-# SAFE GPU DETECTION FOR XGBOOST
-# -------------------------------------------------
 def get_xgb_tree_method():
-    """
-    Always use CPU method for reliability on Windows.
-    Change to 'gpu_hist' only if you have confirmed CUDA support.
-    """
-    # For Windows/CPU stability, always use CPU method
-    return "hist"  # Force CPU histogram method
+    return "hist"  
 
 
 class ModelTrainingPipeline:
@@ -63,7 +54,7 @@ class ModelTrainingPipeline:
         print(f"XGBoost tree_method set to: {tree_method}")
 
         # -------------------------------------------------
-        # ALL 6 MANDATORY MODELS
+        # ALL 6  MODELS
         # -------------------------------------------------
         self.models = {
             "logistic_regression": LogisticRegression(
@@ -95,7 +86,7 @@ class ModelTrainingPipeline:
             "xgboost": xgb.XGBClassifier(
                 objective="binary:logistic",
                 eval_metric="auc",
-                n_estimators=300,  # Reduced for faster training
+                n_estimators=300,  
                 learning_rate=0.03,
                 max_depth=8,
                 subsample=0.8,
@@ -115,12 +106,8 @@ class ModelTrainingPipeline:
         for name, model in self.models.items():
             print(f"\nTraining {name}...")
 
-            # -------------------------------------------------
-            # SPECIAL SAFE HANDLING FOR NAIVE BAYES
-            # -------------------------------------------------
+     
             if name == "naive_bayes":
-                print("⚠️ Training Naive Bayes on subset (memory-safe mode)")
-
                 max_samples = 30000
                 if X_train.shape[0] > max_samples:
                     idx = np.random.choice(X_train.shape[0], max_samples, replace=False)
@@ -159,7 +146,6 @@ class ModelTrainingPipeline:
                 best_auc = metrics["auc"]
                 best_model_name = name
 
-        # Save best model
         joblib.dump(
             self.models[best_model_name],
             "model/saved_models/best_model.pkl"
@@ -175,9 +161,7 @@ class ModelTrainingPipeline:
         print(df)
 
 
-# -------------------------------------------------
-# MAIN
-# -------------------------------------------------
+
 if __name__ == "__main__":
     print("Loading and preprocessing data...")
     X_train, X_test, y_train, y_test, preprocessor = load_and_prepare(
