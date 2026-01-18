@@ -220,7 +220,7 @@ if resources_loaded:
         for col in ['Accuracy', 'AUC', 'Precision', 'Recall', 'F1-Score', 'MCC']:
             display_df[col] = display_df[col].apply(lambda x: f"{x:.4f}")
         
-        st.dataframe(display_df, use_container_width=True)
+        st.dataframe(display_df, width=True)
 
 else:
     st.warning("Please ensure all model files are available in the model/saved_models directory.")
