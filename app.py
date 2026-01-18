@@ -8,6 +8,7 @@ from sklearn.metrics import (
     roc_auc_score, matthews_corrcoef, confusion_matrix,
     classification_report
 )
+from pathlib import Path
 
 st.set_page_config(page_title="Loan Default Predictor", layout="wide")
 
@@ -40,6 +41,20 @@ if resources_loaded:
     with st.sidebar:
         st.header("Settings")
         
+        # ---- Download sample test CSV ----
+        test_csv_path = Path("data/test.csv")
+
+        if test_csv_path.exists():
+            with open(test_csv_path, "rb") as f:
+                st.download_button(
+                    label="Download Sample Test CSV",
+                    data=f,
+                    file_name="test.csv",
+                    mime="text/csv"
+                )
+        else:
+            st.warning("Sample test.csv not found at data/test.csv")
+
         model_options = {
             'Logistic Regression': 'logistic_regression',
             'Decision Tree': 'decision_tree',
