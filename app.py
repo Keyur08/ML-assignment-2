@@ -220,7 +220,8 @@ if resources_loaded:
         for col in ['Accuracy', 'AUC', 'Precision', 'Recall', 'F1-Score', 'MCC']:
             display_df[col] = display_df[col].apply(lambda x: f"{x:.4f}")
         
-        st.dataframe(display_df, width=True)
+        # Fixed: Using the new width parameter for Streamlit 1.45+
+        st.dataframe(display_df, width='stretch')
 
 else:
     st.warning("Please ensure all model files are available in the model/saved_models directory.")
